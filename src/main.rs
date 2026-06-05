@@ -50,7 +50,7 @@ const SPLIT_BALL_POWERUP_COLOR: Color = Color::srgb(0.2, 0.2, 0.2);
 const PICKUP_COLOR: Color = Color::srgb(0.7, 0.7, 0.7);
 
 const BRICK_MATRIX: [[u8; 11]; 18] = [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 2, 1, 3, 1, 4, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -137,6 +137,7 @@ struct Pickup {
 }
 
 // This enum just helps the type system know what a pickup/powerup can be.
+#[derive(Copy, Clone)]
 enum PowerupEffect {
     WidePaddle,
     SplitBall,
@@ -433,6 +434,8 @@ fn update_scoreboard(
 fn check_for_collisions(
     mut commands: Commands,
     mut score: ResMut<Score>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     ball_query: Single<(&mut Velocity, &Transform), With<Ball>>,
     collider_query: Query<(Entity, &Transform, Option<&Brick>, Option<&Powerup>), With<Collider>>,
 ) {
@@ -460,19 +463,8 @@ fn check_for_collisions(
             // Drop pickup if needed
             if let Some(powerup) = maybe_powerup {
                 commands.spawn((
-                    Sprite {
-                        color: PICKUP_COLOR,
-                        ..default()
-                    },
-                    Transform {
-                        // Is there a way to "translate in a circle"?
-                        // That is, can I get the point where we collide(I think it is collision),
-                        // and then draw a circle around that with radius x?
-                        // I just want a circle but I don't know the API
-                        translation: collider_transform.with_translation(Vec3::new(1.0, 1.0, 1.0)),
-                        scale: Vec3::new(BRICK_SIZE.x / 2.0, BRICK_SIZE.y / 2.0, 1.0),
-                        ..default()
-                    },
+                    Mesh2d(meshes.add(Circle::default())),
+                    MeshMaterial2d(materials.add(PICKUP_COLOR)),
                     Pickup {
                         effect: powerup.effect,
                     },
