@@ -465,6 +465,8 @@ fn check_for_collisions(
                 commands.spawn((
                     Mesh2d(meshes.add(Circle::default())),
                     MeshMaterial2d(materials.add(PICKUP_COLOR)),
+                    Transform::from_translation(collider_transform.translation.with_z(1.0))
+                        .with_scale(Vec2::splat(20.0).extend(1.0)),
                     Pickup {
                         effect: powerup.effect,
                     },
