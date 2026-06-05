@@ -8,6 +8,7 @@ use bevy::{
 const PADDLE_SIZE: Vec2 = Vec2::new(120.0, 20.0);
 const GAP_BETWEEN_PADDLE_AND_FLOOR: f32 = 60.0;
 const PADDLE_SPEED: f32 = 500.0;
+const PICKUP_DROP_SPEED: f32 = 250.0;
 // How close can the paddle get to the wall
 const PADDLE_PADDING: f32 = 10.0;
 
@@ -46,6 +47,7 @@ const SCORE_COLOR: Color = Color::srgb(1.0, 0.5, 0.5);
 const WIDE_PADDLE_POWERUP_COLOR: Color = Color::srgb(0.1, 1.0, 0.5);
 const FIVE_POINTS_POWERUP_COLOR: Color = Color::srgb(0.0, 0.3, 1.0);
 const SPLIT_BALL_POWERUP_COLOR: Color = Color::srgb(0.2, 0.2, 0.2);
+const PICKUP_COLOR: Color = Color::srgb(0.7, 0.7, 0.7);
 
 const BRICK_MATRIX: [[u8; 11]; 18] = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -339,6 +341,9 @@ fn setup(
                         },
                         Brick,
                         Collider,
+                        Powerup {
+                            effect: PowerupEffect::WidePaddle,
+                        },
                     ));
                 }
                 3 => {
@@ -354,6 +359,9 @@ fn setup(
                         },
                         Brick,
                         Collider,
+                        Powerup {
+                            effect: PowerupEffect::FivePoints,
+                        },
                     ));
                 }
                 4 => {
@@ -369,6 +377,9 @@ fn setup(
                         },
                         Brick,
                         Collider,
+                        Powerup {
+                            effect: PowerupEffect::SplitBall,
+                        },
                     ));
                 }
                 _ => {}
@@ -423,11 +434,11 @@ fn check_for_collisions(
     mut commands: Commands,
     mut score: ResMut<Score>,
     ball_query: Single<(&mut Velocity, &Transform), With<Ball>>,
-    collider_query: Query<(Entity, &Transform, Option<&Brick>), With<Collider>>,
+    collider_query: Query<(Entity, &Transform, Option<&Brick>, Option<&Powerup>), With<Collider>>,
 ) {
     let (mut ball_velocity, ball_transform) = ball_query.into_inner();
 
-    for (collider_entity, collider_transform, maybe_brick) in &collider_query {
+    for (collider_entity, collider_transform, maybe_brick, maybe_powerup) in &collider_query {
         let collision = ball_collision(
             BoundingCircle::new(ball_transform.translation.truncate(), BALL_DIAMETER / 2.),
             Aabb2d::new(
@@ -444,6 +455,29 @@ fn check_for_collisions(
             if maybe_brick.is_some() {
                 commands.entity(collider_entity).despawn();
                 **score += 1;
+            }
+
+            // Drop pickup if needed
+            if let Some(powerup) = maybe_powerup {
+                commands.spawn((
+                    Sprite {
+                        color: PICKUP_COLOR,
+                        ..default()
+                    },
+                    Transform {
+                        // Is there a way to "translate in a circle"?
+                        // That is, can I get the point where we collide(I think it is collision),
+                        // and then draw a circle around that with radius x?
+                        // I just want a circle but I don't know the API
+                        translation: collider_transform.with_translation(Vec3::new(1.0, 1.0, 1.0)),
+                        scale: Vec3::new(BRICK_SIZE.x / 2.0, BRICK_SIZE.y / 2.0, 1.0),
+                        ..default()
+                    },
+                    Pickup {
+                        effect: powerup.effect,
+                    },
+                    Velocity(Vec2::new(0.0, -PICKUP_DROP_SPEED)),
+                ));
             }
 
             // Reflect the ball's velocity when it collides
